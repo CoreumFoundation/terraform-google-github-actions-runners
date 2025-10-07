@@ -147,3 +147,107 @@ variable "cooldown_period" {
   type        = number
   default     = 60
 }
+
+variable "enable_schedule" {
+  description = "Enable autoscaling schedule. When enabled, scales based on configured schedule parameters."
+  type        = bool
+  default     = false
+}
+
+variable "schedule_timezone" {
+  description = "The timezone for the scaling schedule. Use IANA timezone format (e.g., 'Europe/Warsaw' for CEST)."
+  type        = string
+  default     = "Europe/Warsaw"
+}
+
+variable "schedule_working_hours_start" {
+  description = "Start hour for working hours (0-23). Uses 24-hour format."
+  type        = number
+  default     = 7
+  validation {
+    condition     = var.schedule_working_hours_start >= 0 && var.schedule_working_hours_start <= 23
+    error_message = "Start hour must be between 0 and 23."
+  }
+}
+
+variable "schedule_working_hours_end" {
+  description = "End hour for working hours (0-23). Uses 24-hour format."
+  type        = number
+  default     = 19
+  validation {
+    condition     = var.schedule_working_hours_end >= 0 && var.schedule_working_hours_end <= 23
+    error_message = "End hour must be between 0 and 23."
+  }
+}
+
+variable "schedule_working_days" {
+  description = "Working days in cron format (e.g., '1-5' for Monday-Friday, '1,3,5' for Mon/Wed/Fri, '*' for all days)."
+  type        = string
+  default     = "1-5"
+}
+
+variable "schedule_working_hours_min_replicas" {
+  description = "Minimum number of replicas during working hours."
+  type        = number
+  default     = 1
+}
+
+variable "schedule_off_hours_min_replicas" {
+  description = "Minimum number of replicas during off-hours."
+  type        = number
+  default     = 0
+}
+
+variable "schedule_weekend_min_replicas" {
+  description = "Minimum number of replicas during weekends. Set to null to disable separate weekend schedule."
+  type        = number
+  default     = 0
+}
+
+variable "autoscaling_cpu_enabled" {
+  description = "Enable CPU-based autoscaling. When enabled, instances will scale based on CPU utilization."
+  type        = bool
+  default     = true
+}
+
+variable "autoscaling_cpu_target" {
+  description = "Target CPU utilization for autoscaling (0.0 - 1.0). For example, 0.6 means 60% CPU utilization."
+  type        = number
+  default     = 0.6
+  validation {
+    condition     = var.autoscaling_cpu_target > 0 && var.autoscaling_cpu_target <= 1.0
+    error_message = "CPU target must be between 0.0 and 1.0."
+  }
+}
+
+variable "autoscaling_load_balancing_enabled" {
+  description = "Enable load balancing utilization-based autoscaling."
+  type        = bool
+  default     = false
+}
+
+variable "autoscaling_load_balancing_target" {
+  description = "Target load balancing utilization for autoscaling (0.0 - 1.0)."
+  type        = number
+  default     = 0.8
+  validation {
+    condition     = var.autoscaling_load_balancing_target > 0 && var.autoscaling_load_balancing_target <= 1.0
+    error_message = "Load balancing target must be between 0.0 and 1.0."
+  }
+}
+
+variable "autoscaling_metric" {
+  description = "Custom metric-based autoscaling configuration. List of maps with keys: name, target, type (GAUGE or DELTA_PER_SECOND or DELTA_PER_MINUTE)."
+  type = list(object({
+    name   = string
+    target = number
+    type   = string
+  }))
+  default = []
+}
+
+variable "instance_tags" {
+  description = "Tags to add to the instances"
+  type        = list(string)
+  default     = []
+}

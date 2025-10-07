@@ -44,4 +44,13 @@ output "service_account" {
   value       = local.service_account
 }
 
+output "autoscaler_name" {
+  description = "The name of the autoscaler (if schedule is enabled)"
+  value       = var.enable_schedule ? google_compute_region_autoscaler.runner_autoscaler[0].name : null
+}
+
+output "autoscaler_target" {
+  description = "The target MIG for the autoscaler (if schedule is enabled)"
+  value       = var.enable_schedule ? google_compute_region_autoscaler.runner_autoscaler[0].target : null
+}
 

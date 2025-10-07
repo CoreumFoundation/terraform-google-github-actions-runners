@@ -145,9 +145,7 @@ module "mig_template" {
     }, {
     "shutdown-script" = local.shutdown_script
   }, var.custom_metadata)
-  tags = [
-    "gh-runner-vm"
-  ]
+  tags = concat(["gh-runner-vm"], var.instance_tags)
 }
 /*****************************************
   Runner MIG
@@ -161,9 +159,92 @@ module "mig" {
   region             = var.region
   instance_template  = module.mig_template.self_link
 
-  /* autoscaler */
-  autoscaling_enabled = true
+  /* autoscaler - disabled when using custom autoscaler with schedule */
+  autoscaling_enabled = var.enable_schedule ? false : true
   min_replicas        = var.min_replicas
   max_replicas        = var.max_replicas
   cooldown_period     = var.cooldown_period
+}
+
+/*****************************************
+  Custom Autoscaler with Scaling Schedule
+ *****************************************/
+locals {
+  # Calculate duration in seconds based on working hours
+  working_hours_duration = (var.schedule_working_hours_end - var.schedule_working_hours_start) * 3600
+  # Calculate off-hours duration (24 hours - working hours duration)
+  off_hours_duration = (24 - (var.schedule_working_hours_end - var.schedule_working_hours_start)) * 3600
+}
+
+resource "google_compute_region_autoscaler" "runner_autoscaler" {
+  count   = var.enable_schedule ? 1 : 0
+  project = var.project_id
+  name    = "${local.instance_name}-autoscaler"
+  region  = var.region
+  target  = module.mig.instance_group_manager.id
+
+  autoscaling_policy {
+    min_replicas    = var.min_replicas
+    max_replicas    = var.max_replicas
+    cooldown_period = var.cooldown_period
+
+    # CPU-based autoscaling
+    dynamic "cpu_utilization" {
+      for_each = var.autoscaling_cpu_enabled ? [1] : []
+      content {
+        target = var.autoscaling_cpu_target
+      }
+    }
+
+    # Load balancing-based autoscaling
+    dynamic "load_balancing_utilization" {
+      for_each = var.autoscaling_load_balancing_enabled ? [1] : []
+      content {
+        target = var.autoscaling_load_balancing_target
+      }
+    }
+
+    # Custom metric-based autoscaling
+    dynamic "metric" {
+      for_each = var.autoscaling_metric
+      content {
+        name   = metric.value.name
+        target = metric.value.target
+        type   = metric.value.type
+      }
+    }
+
+    # Scale to configured replicas during working hours
+    scaling_schedules {
+      name                  = "scale-working-hours"
+      description           = "Scale to ${var.schedule_working_hours_min_replicas} replicas during working hours (${var.schedule_working_hours_start}:00-${var.schedule_working_hours_end}:00)"
+      min_required_replicas = var.schedule_working_hours_min_replicas
+      schedule              = "0 ${var.schedule_working_hours_start} * * ${var.schedule_working_days}"
+      time_zone             = var.schedule_timezone
+      duration_sec          = local.working_hours_duration
+    }
+
+    # Scale to configured replicas after working hours
+    scaling_schedules {
+      name                  = "scale-off-hours"
+      description           = "Scale to ${var.schedule_off_hours_min_replicas} replicas during off-hours"
+      min_required_replicas = var.schedule_off_hours_min_replicas
+      schedule              = "0 ${var.schedule_working_hours_end} * * ${var.schedule_working_days}"
+      time_zone             = var.schedule_timezone
+      duration_sec          = local.off_hours_duration
+    }
+
+    # Scale to configured replicas on weekends (if working_days doesn't cover all days)
+    dynamic "scaling_schedules" {
+      for_each = var.schedule_working_days != "*" ? [1] : []
+      content {
+        name                  = "scale-weekends"
+        description           = "Scale to ${var.schedule_weekend_min_replicas} replicas on weekends"
+        min_required_replicas = var.schedule_weekend_min_replicas
+        schedule              = "0 0 * * 6"
+        time_zone             = var.schedule_timezone
+        duration_sec          = 172800 # 48 hours (Saturday and Sunday)
+      }
+    }
+  }
 }
