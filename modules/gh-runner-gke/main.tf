@@ -35,24 +35,25 @@ resource "google_compute_subnetwork" "gh-subnetwork" {
   ip_cidr_range = var.subnet_ip
   region        = var.region
   network       = google_compute_network.gh-network[0].name
-  secondary_ip_range = [
-    {
-      range_name    = var.ip_range_pods_name
-      ip_cidr_range = var.ip_range_pods_cidr
-    },
-    { range_name    = var.ip_range_services_name
-      ip_cidr_range = var.ip_range_services_cider
-    }
-  ]
+
+  secondary_ip_range {
+    range_name    = var.ip_range_pods_name
+    ip_cidr_range = var.ip_range_pods_cidr
+  }
+
+  secondary_ip_range {
+    range_name    = var.ip_range_services_name
+    ip_cidr_range = var.ip_range_services_cider
+  }
 }
 /*****************************************
   Runner GKE
  *****************************************/
 module "runner-cluster" {
   source                   = "terraform-google-modules/kubernetes-engine/google//modules/beta-public-cluster/"
-  version                  = "~> 24.0"
+  version                  = "~> 35.0"
   project_id               = var.project_id
-  name                     = "gh-runner-${var.repo_name}"
+  name                     = "gh-runner-${var.cluster_suffix}"
   regional                 = false
   region                   = var.region
   zones                    = var.zones
@@ -65,42 +66,85 @@ module "runner-cluster" {
   monitoring_service       = "monitoring.googleapis.com/kubernetes"
   remove_default_node_pool = true
   service_account          = local.service_account
+  gce_pd_csi_driver        = true
+  deletion_protection      = false
   node_pools = [
     {
-      name         = "runner-pool"
-      min_count    = var.min_node_count
-      max_count    = var.max_node_count
-      auto_upgrade = true
-      machine_type = var.machine_type
+      name                 = "runner-pool"
+      min_count            = var.min_node_count
+      max_count            = var.max_node_count
+      auto_upgrade         = true
+      machine_type         = var.machine_type
+      enable_private_nodes = var.enable_private_nodes
     }
   ]
-}
-
-/*****************************************
-  IAM Bindings GKE SVC
- *****************************************/
-# allow GKE to pull images from GCR
-resource "google_project_iam_member" "gke" {
-  count   = var.service_account == "" ? 1 : 0
-  project = var.project_id
-  role    = "roles/storage.objectViewer"
-  member  = "serviceAccount:${module.runner-cluster.service_account}"
 }
 
 data "google_client_config" "default" {
 }
 
+resource "kubernetes_namespace" "arc_systems" {
+  metadata {
+    name = var.arc_systems_namespace
+  }
+}
+
+resource "kubernetes_namespace" "arc_runners" {
+  metadata {
+    name = var.arc_runners_namespace
+  }
+
+  depends_on = [helm_release.arc]
+}
+
 /*****************************************
   K8S secrets for configuring k8s runners
  *****************************************/
-resource "kubernetes_secret" "runner-secrets" {
+resource "kubernetes_secret" "gh_app_pre_defined_secret" {
   metadata {
-    name = var.runner_k8s_config
+    name      = var.gh_app_pre_defined_secret_name
+    namespace = kubernetes_namespace.arc_runners.metadata[0].name
   }
   data = {
-    repo_url   = var.repo_url
-    gh_token   = var.gh_token
-    repo_owner = var.repo_owner
-    repo_name  = var.repo_name
+    github_app_id              = var.gh_app_id
+    github_app_installation_id = var.gh_app_installation_id
+    github_app_private_key     = var.gh_app_private_key
   }
+}
+
+resource "helm_release" "arc" {
+  name      = "arc"
+  namespace = kubernetes_namespace.arc_systems.metadata[0].name
+  chart     = "oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller"
+  version   = var.arc_controller_version
+  wait      = true
+  values    = var.arc_controller_values
+}
+
+resource "helm_release" "arc_runners_set" {
+  name      = "arc-runners"
+  namespace = kubernetes_namespace.arc_runners.metadata[0].name
+  chart     = "oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set"
+  version   = var.arc_runners_version
+
+  set = concat(
+    [
+      {
+        name  = "githubConfigSecret"
+        value = kubernetes_secret.gh_app_pre_defined_secret.metadata[0].name
+      },
+      {
+        name  = "githubConfigUrl"
+        value = var.gh_config_url
+      }
+    ],
+    var.arc_container_mode == "" ? [] : [
+      {
+        name  = "containerMode.type"
+        value = var.arc_container_mode
+      }
+    ]
+  )
+
+  values = var.arc_runners_values
 }

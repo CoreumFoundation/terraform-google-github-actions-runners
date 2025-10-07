@@ -15,22 +15,32 @@
  */
 
 terraform {
-  required_version = ">= 0.13"
+  required_version = ">= 1.3"
   required_providers {
 
     google = {
       source  = "hashicorp/google"
-      version = ">= 4.3.0, < 5.0"
+      version = ">= 4.3.0, < 8"
+    }
+
+    google-beta = {
+      source  = "hashicorp/google-beta"
+      version = ">= 4.3.0, < 8"
     }
 
     kubernetes = {
       source  = "hashicorp/kubernetes"
       version = "~> 2.0"
     }
+
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 3.0"
+    }
   }
 
   provider_meta "google" {
-    module_name = "blueprints/terraform/terraform-google-github-actions-runners:gh-runner-gke/v3.1.1"
+    module_name = "blueprints/terraform/terraform-google-github-actions-runners:gh-runner-gke/v5.1.0"
   }
 
 }

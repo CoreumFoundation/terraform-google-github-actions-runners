@@ -119,7 +119,7 @@ locals {
 
 module "mig_template" {
   source             = "terraform-google-modules/vm/google//modules/instance_template"
-  version            = "~> 7.0"
+  version            = "~> 13.0"
   project_id         = var.project_id
   machine_type       = var.machine_type
   network            = local.network_name
@@ -151,13 +151,12 @@ module "mig_template" {
   Runner MIG
  *****************************************/
 module "mig" {
-  source             = "terraform-google-modules/vm/google//modules/mig"
-  version            = "~> 7.0"
-  project_id         = var.project_id
-  subnetwork_project = var.project_id
-  hostname           = local.instance_name
-  region             = var.region
-  instance_template  = module.mig_template.self_link
+  source            = "terraform-google-modules/vm/google//modules/mig"
+  version           = "~> 13.0"
+  project_id        = var.project_id
+  hostname          = local.instance_name
+  region            = var.region
+  instance_template = module.mig_template.self_link
 
   /* autoscaler - disabled when using custom autoscaler with schedule */
   autoscaling_enabled = var.enable_schedule ? false : true

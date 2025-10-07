@@ -167,6 +167,7 @@ module "gh_runner_mig" {
 | custom\_metadata | User provided custom metadata | `map(any)` | `{}` | no |
 | gh\_runner\_labels | GitHub runner labels to attach to the runners. Docs: https://docs.github.com/en/actions/hosting-your-own-runners/using-labels-with-self-hosted-runners | `set(string)` | `[]` | no |
 | gh\_token | Github token that is used for generating Self Hosted Runner Token | `string` | n/a | yes |
+| instance\_tags | Additional tags to add to the instances | `list(string)` | `[]` | no |
 | machine\_type | The GCP machine type to deploy | `string` | `"n1-standard-1"` | no |
 | max\_replicas | Maximum number of runner instances | `number` | `10` | no |
 | min\_replicas | Minimum number of runner instances | `number` | `2` | no |
@@ -205,7 +206,7 @@ module "gh_runner_mig" {
 | service\_account | Service account email for GCE |
 | subnet\_name | Name of VPC |
 
- <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+<!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 
 ## Requirements
 

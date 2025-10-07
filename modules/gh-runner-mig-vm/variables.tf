@@ -247,7 +247,7 @@ variable "autoscaling_metric" {
 }
 
 variable "instance_tags" {
-  description = "Tags to add to the instances"
   type        = list(string)
+  description = "Additional tags to add to the instances"
   default     = []
 }

@@ -14,6 +14,9 @@
 
 timeout: 3600s
 steps:
+- id: swap-module-refs
+  name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
+  args: ['module-swapper']
 - id: prepare
   name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
   args: ['/bin/bash', '-c', 'source /usr/local/bin/task_helper_functions.sh && prepare_environment && chmod 600 /builder/home/.netrc']
@@ -21,41 +24,94 @@ steps:
   - 'TF_VAR_org_id=$_ORG_ID'
   - 'TF_VAR_folder_id=$_FOLDER_ID'
   - 'TF_VAR_billing_account=$_BILLING_ACCOUNT'
-- id: create
+- id: init-all
   name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
-  args: ['/bin/bash', '-c', 'source /usr/local/bin/task_helper_functions.sh && kitchen_do create']
-- id: converge
-  name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
-  args: ['/bin/bash', '-c', 'source /usr/local/bin/task_helper_functions.sh && kitchen_do converge']
-- id: verify
-  name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
-  args: ['/bin/bash', '-c', 'source /usr/local/bin/task_helper_functions.sh && kitchen_do verify']
-- id: destroy
-  name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
-  args: ['/bin/bash', '-c', 'source /usr/local/bin/task_helper_functions.sh && kitchen_do destroy']
-- id: create-oidc
+  args: ['/bin/bash', '-c', 'cft test run all --stage init --verbose']
   waitFor:
       - prepare
+# test/fixtures/gh-runner-mig-container-vm
+- id: apply-gh-runner-mig-container-vm
   name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
-  args: ['/bin/bash', '-c', 'cd test/integration && RUN_STAGE=init go test -v -run TestOIDCSimple ./... -p 1']
-- id: converge-oidc
+  args: ['/bin/bash', '-c', 'cft test run TestGHRunnerMIGContainerVM --stage apply --verbose']
   waitFor:
-      - create-oidc
+      - init-all
+- id: verify-gh-runner-mig-container-vm
   name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
-  args: ['/bin/bash', '-c', 'cd test/integration && RUN_STAGE=apply go test -v -run TestOIDCSimple ./... -p 1']
+  args: ['/bin/bash', '-c', 'cft test run TestGHRunnerMIGContainerVM --stage verify --verbose']
+  waitFor:
+    - apply-gh-runner-mig-container-vm
+- id: destroy-gh-runner-mig-container-vm
+  name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
+  args: ['/bin/bash', '-c', 'cft test run TestGHRunnerMIGContainerVM --stage destroy --verbose']
+  waitFor:
+    - verify-gh-runner-mig-container-vm
+# TestAll/examples/gh-runner-gke-simple
+- id: apply-gh-runner-gke-simple
+  name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
+  args: ['/bin/bash', '-c', 'cft test run TestGhRunnerGkeSimple --stage apply --verbose']
+  waitFor:
+      - init-all
+- id: verify-gh-runner-gke-simple
+  name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
+  args: ['/bin/bash', '-c', 'cft test run TestGhRunnerGkeSimple --stage verify --verbose']
+  waitFor:
+      - apply-gh-runner-gke-simple
+- id: destroy-gh-runner-gke-simple
+  name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
+  args: ['/bin/bash', '-c', 'cft test run TestGhRunnerGkeSimple --stage destroy --verbose']
+  waitFor:
+      - verify-gh-runner-gke-simple
+# TestAll/examples/gh-runner-gke-dind
+- id: apply-gh-runner-gke-dind
+  name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
+  args: ['/bin/bash', '-c', 'cft test run TestGhRunnerGkeDind --stage apply --verbose']
+  waitFor:
+      - init-all
+- id: verify-gh-runner-gke-dind
+  name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
+  args: ['/bin/bash', '-c', 'cft test run TestGhRunnerGkeDind --stage verify --verbose']
+  waitFor:
+      - apply-gh-runner-gke-dind
+- id: destroy-gh-runner-gke-dind
+  name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
+  args: ['/bin/bash', '-c', 'cft test run TestGhRunnerGkeDind --stage destroy --verbose']
+  waitFor:
+      - verify-gh-runner-gke-dind
+# TestAll/examples/gh-runner-gke-dind-rootless
+- id: apply-gh-runner-gke-dind-rootless
+  name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
+  args: ['/bin/bash', '-c', 'cft test run TestGhRunnerGkeDindRootless --stage apply --verbose']
+  waitFor:
+      - init-all
+- id: verify-gh-runner-gke-dind-rootless
+  name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
+  args: ['/bin/bash', '-c', 'cft test run TestGhRunnerGkeDindRootless --stage verify --verbose']
+  waitFor:
+      - apply-gh-runner-gke-dind-rootless
+- id: destroy-gh-runner-gke-dind-rootless
+  name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
+  args: ['/bin/bash', '-c', 'cft test run TestGhRunnerGkeDindRootless --stage destroy --verbose']
+  waitFor:
+      - verify-gh-runner-gke-dind-rootless
+# examples/oidc-simple
+- id: apply-oidc
+  name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
+  args: ['/bin/bash', '-c', 'cft test run TestOIDCSimple --stage apply --verbose']
+  waitFor:
+      - init-all
 - id: verify-oidc
-  waitFor:
-      - converge-oidc
   name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
-  args: ['/bin/bash', '-c', 'cd test/integration && RUN_STAGE=verify go test -v -run TestOIDCSimple ./... -p 1']
+  args: ['/bin/bash', '-c', 'cft test run TestOIDCSimple --stage verify --verbose']
+  waitFor:
+      - apply-oidc
 - id: destroy-oidc
+  name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
+  args: ['/bin/bash', '-c', 'cft test run TestOIDCSimple --stage destroy --verbose']
   waitFor:
       - verify-oidc
-  name: 'gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS'
-  args: ['/bin/bash', '-c', 'cd test/integration && RUN_STAGE=teardown go test -v -run TestOIDCSimple ./... -p 1']
 tags:
 - 'ci'
 - 'integration'
 substitutions:
   _DOCKER_IMAGE_DEVELOPER_TOOLS: 'cft/developer-tools'
-  _DOCKER_TAG_VERSION_DEVELOPER_TOOLS: '1.10'
+  _DOCKER_TAG_VERSION_DEVELOPER_TOOLS: '1.25'
