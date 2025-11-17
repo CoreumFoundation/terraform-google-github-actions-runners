@@ -165,6 +165,8 @@ module "gh_runner_mig" {
 | enable\_schedule | Enable autoscaling schedule. When enabled, scales based on configured schedule parameters. | `bool` | `false` | no |
 | create\_subnetwork | Whether to create subnetwork or use the one provided via subnet\_name | `bool` | `true` | no |
 | custom\_metadata | User provided custom metadata | `map(any)` | `{}` | no |
+| disk\_size\_gb | Instance disk size in GB | `number` | `100` | no |
+| disk\_type | Instance disk type, can be either pd-ssd, local-ssd, or pd-standard | `string` | `"pd-ssd"` | no |
 | gh\_runner\_labels | GitHub runner labels to attach to the runners. Docs: https://docs.github.com/en/actions/hosting-your-own-runners/using-labels-with-self-hosted-runners | `set(string)` | `[]` | no |
 | gh\_token | Github token that is used for generating Self Hosted Runner Token | `string` | n/a | yes |
 | instance\_tags | Additional tags to add to the instances | `list(string)` | `[]` | no |
