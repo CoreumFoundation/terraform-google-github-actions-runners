@@ -59,8 +59,25 @@ resource "google_compute_router_nat" "nat" {
 }
 
 /*****************************************
+  Firewall Rules
+  *****************************************/
+resource "google_compute_firewall" "allow-ssh" {
+  name    = "${var.network_name}-allow-ssh"
+  project = var.project_id
+  network = google_compute_network.gh-network[0].name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["22"]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+  target_tags   = ["allow-ssh"]
+}
+
+/*****************************************
   IAM Bindings GCE SVC
- *****************************************/
+  *****************************************/
 
 resource "google_service_account" "runner_service_account" {
   count        = var.service_account == "" ? 1 : 0
